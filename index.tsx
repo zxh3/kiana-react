@@ -1,7 +1,15 @@
 const React = {
   createElement: (tag, props, ...children) => {
     if (typeof tag === "function") {
-      return tag(props);
+      try {
+        return tag(props);
+      } catch ({ promise, key }) {
+        promise.then((data) => {
+          cacheStore.set(key, data);
+          rerender();
+        });
+        return { tag: "h1", props: { children: ["I'm loading..."] } };
+      }
     }
 
     const element = { tag, props: { ...props, children } };
@@ -58,9 +66,19 @@ const useState = (initialState) => {
   return [states[FROZEN_CURSOR], setState];
 };
 
+const cacheStore = new Map();
+const createResource = (promise, key) => {
+  if (cacheStore.has(key)) {
+    return cacheStore.get(key);
+  } else {
+    throw { promise, key };
+  }
+};
+
 const App = () => {
   const [name, setName] = useState("Kiana");
   const [count, setCount] = useState(0);
+  const imgSrc = createResource(loadImageSrc(), "dota2-image");
 
   return (
     <div className="foo-class">
@@ -89,8 +107,20 @@ const App = () => {
       >
         -
       </button>
+
+      <img src={imgSrc} />
     </div>
   );
 };
+
+async function loadImageSrc() {
+  return new Promise((resolve) => {
+    setTimeout(() => {
+      resolve(
+        "https://e1.pxfuel.com/desktop-wallpaper/363/993/desktop-wallpaper-inspirational-3d-live-for-dota-2-android-apps-on-google-dota-3d.jpg"
+      );
+    }, 1000);
+  });
+}
 
 render(<App />, document.getElementById("app"));
